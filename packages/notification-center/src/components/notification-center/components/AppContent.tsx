@@ -1,66 +1,45 @@
-import { useAuth } from '../../../hooks';
 import React from 'react';
-import { useQuery } from 'react-query';
-import { IOrganizationEntity } from '@novu/shared';
-import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
+import { MantineProvider, MantineThemeOverride } from '@mantine/core';
+import { css } from '@emotion/css';
+
 import { Layout } from './layout/Layout';
-import { Main } from './Main';
-import { useApi } from '../../../hooks/use-api.hook';
-import { useNovuThemeProvider } from '../../../hooks/use-novu-theme-provider.hook';
+import { useNovuTheme } from '../../../hooks';
+import { useFetchOrganization } from '../../../hooks';
 
 export function AppContent() {
-  const { api } = useApi();
-  const { isLoggedIn } = useAuth();
-  const { theme, common } = useNovuThemeProvider();
-  const { data: organization } = useQuery<Pick<IOrganizationEntity, '_id' | 'name' | 'branding'>>(
-    'organization',
-    () => api.getOrganization(),
-    {
-      enabled: isLoggedIn && api.isAuthenticated,
-    }
-  );
+  const { theme, common } = useNovuTheme();
+  const { data: organization } = useFetchOrganization();
 
-  const themeConfig = {
-    colors: {
-      main: theme.loaderColor || organization?.branding?.color,
-      secondaryFontColor: theme.layout?.wrapper.secondaryFontColor,
-    },
-    fontFamily: common.fontFamily || organization?.branding?.fontFamily,
-    layout: {
-      direction: (organization?.branding?.direction === 'rtl' ? 'rtl' : 'ltr') as 'ltr' | 'rtl',
-    },
+  const primaryColor = organization?.branding?.color ?? theme.loaderColor;
+  const fontFamily = common.fontFamily || organization?.branding?.fontFamily;
+  const dir = (organization?.branding?.direction === 'rtl' ? 'rtl' : 'ltr') as 'ltr' | 'rtl';
+  const themeConfig: MantineThemeOverride = {
+    fontFamily,
+    dir,
   };
 
   return (
-    <ThemeProvider theme={themeConfig}>
-      <GlobalStyle fontFamily={themeConfig.fontFamily} />
-      <Wrap layoutDirection={themeConfig.layout.direction} brandColor={themeConfig.colors.main}>
-        <Layout>
-          <Main />
-        </Layout>
-      </Wrap>
-    </ThemeProvider>
+    <MantineProvider theme={themeConfig}>
+      <div className={wrapperClassName(primaryColor, fontFamily, dir)}>
+        <Layout />
+      </div>
+    </MantineProvider>
   );
 }
 
-const GlobalStyle = createGlobalStyle<{ fontFamily: string }>`
-  body {
-    margin: 0;
-    font-family: ${({ fontFamily }) => fontFamily}, Helvetica, sans-serif;
-    color: #333737;
-  }
-`;
-
-const Wrap = styled.div<{ layoutDirection: 'ltr' | 'rtl'; brandColor: string }>`
-  direction: ${({ layoutDirection }) => layoutDirection};
+const wrapperClassName = (primaryColor: string, fontFamily: string, dir: string) => css`
+  margin: 0;
+  font-family: ${fontFamily === 'inherit' ? fontFamily : `${fontFamily}, Helvetica, sans-serif`};
+  color: #333737;
+  direction: ${dir};
   width: 420px;
   z-index: 999;
 
   ::-moz-selection {
-    background: ${({ brandColor }) => brandColor};
+    background: ${primaryColor};
   }
 
   *::selection {
-    background: ${({ brandColor }) => brandColor};
+    background: ${primaryColor};
   }
 `;
